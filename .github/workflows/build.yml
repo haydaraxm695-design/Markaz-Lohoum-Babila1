@@ -26,24 +26,30 @@ jobs:
           ZIP_FILE=$(find . -maxdepth 1 -name "*.zip" | head -n 1)
           unzip -q "$ZIP_FILE" -d buildsrc
           echo "ZIP extracted"
-          find buildsrc -maxdepth 3 -type f | head -50
 
       - name: Find Gradle project
         run: |
-          GRADLEW=$(find buildsrc -name gradlew -type f | head -n 1)
-          if [ -z "$GRADLEW" ]; then
-            echo "gradlew not found"
+          SETTINGS=$(find buildsrc \( -name "settings.gradle" -o -name "settings.gradle.kts" \) -type f | head -n 1)
+
+          if [ -z "$SETTINGS" ]; then
+            echo "settings.gradle not found"
+            find buildsrc -maxdepth 5 -type f | head -100
             exit 1
           fi
-          PROJECT_DIR=$(dirname "$GRADLEW")
-          echo "PROJECT_DIR=$PROJECT_DIR" >> $GITHUB_ENV
+
+          PROJECT_DIR=$(dirname "$SETTINGS")
+          echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
           echo "Found project at: $PROJECT_DIR"
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
 
       - name: Build APK
         run: |
           cd "$PROJECT_DIR"
-          chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon
+          gradle assembleDebug --no-daemon
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
